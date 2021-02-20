@@ -172,11 +172,11 @@ def conect_to_bd(reg_or_enter):
                                 # обновление ексель файла с тетрис топом
                                 update_tetris_top_xl()
 
+                                wb_p = openpyxl.Workbook()
+                                wb_p.save(f'pacman_pics_n_fields\{pidentification}_pac.xlsx')
 
-
-                                # создание двух файлов !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
+                                wb_t = openpyxl.Workbook()
+                                wb_t.save(f"pacman_pics_n_fields\{pidentification}_tet.xlsx")
 
                                 start_screen()
                             else:
@@ -287,9 +287,9 @@ def start_screen():
                     if event.ui_element == toptetris:
                         os.startfile('pacman_pics_n_fields\топ тетриса.xlsx')
                     if event.ui_element == gamespacman:
-                        pass
+                        os.startfile(f"pacman_pics_n_fields\{pidentification}_pac.xlsx")
                     if event.ui_element == gamestetris:
-                        pass
+                        os.startfile(f"pacman_pics_n_fields\{pidentification}_tet.xlsx")
             manager.process_events(event)
         pygame.display.flip()
 
@@ -376,7 +376,6 @@ def pacman_game():
                 ATE_GHOSTS_NUM = []
                 pac_eat_prov = 0
         if not coin_group:
-            # добавление времени и очков игры в табличный файл !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             this_game_time = pygame.time.get_ticks() - start_game_time
             nfactor = this_game_points / this_game_time * 1000000
             font = pygame.font.SysFont("Times New Roman", 75, bold=True)
@@ -393,6 +392,21 @@ def pacman_game():
             pygame.time.delay(3500)
             player_group.update(True)
             ghosts_group.update(True)
+
+            my_wb_obj = openpyxl.load_workbook(f"pacman_pics_n_fields\{pidentification}_pac.xlsx")
+            my_sheet_obj = my_wb_obj.active
+            rowws_1 = (int(my_sheet_obj.max_row)) + 1
+            if int(my_sheet_obj.max_row) == 1 and (my_sheet_obj.cell(row=1, column=1)).value is None:
+                (my_sheet_obj.cell(row=1, column=1)).value = f"{nfactor}"
+                (my_sheet_obj.cell(row=1, column=2)).value = f"{this_game_time}"
+                (my_sheet_obj.cell(row=1, column=3)).value = f"{this_game_points}"
+                my_wb_obj.save(f"pacman_pics_n_fields\{pidentification}_pac.xlsx")
+            else:
+                (my_sheet_obj.cell(row=rowws_1, column=1)).value = f"{nfactor}"
+                (my_sheet_obj.cell(row=rowws_1, column=2)).value = f"{this_game_time}"
+                (my_sheet_obj.cell(row=rowws_1, column=3)).value = f"{this_game_points}"
+                my_wb_obj.save(f"pacman_pics_n_fields\{pidentification}_pac.xlsx")
+
             if nfactor >= pmg_factor:
                 pmg_factor = nfactor
                 cur.execute(f"UPDATE pacman_top SET best_game_pacman_time = {this_game_time},"
@@ -850,6 +864,15 @@ def update_score(nscore):
         # обновление ексель файла с тетрис топом
         update_tetris_top_xl()
 
+    # Добавление набранных очков в тетрисе
+    my_wb_obj = openpyxl.load_workbook(f"pacman_pics_n_fields\{pidentification}_tet.xlsx")
+    my_sheet_obj = my_wb_obj.active
+    if int(my_sheet_obj.max_row) == 1 and (my_sheet_obj.cell(row=1, column=1)).value is None:
+        (my_sheet_obj.cell(row=1, column=1)).value = f"{nscore}"
+        my_wb_obj.save(f"pacman_pics_n_fields\{pidentification}_tet.xlsx")
+    else:
+        (my_sheet_obj.cell(row=((int(my_sheet_obj.max_row)) + 1), column=1)).value = f"{nscore}"
+        my_wb_obj.save(f"pacman_pics_n_fields\{pidentification}_tet.xlsx")
 
 # обновление ексель файла с тетрис топом
 def update_tetris_top_xl():
@@ -968,7 +991,6 @@ def main(win):
             draw_text_middle(win, "Ты проиграл!", 80, (255, 255, 255))
             pygame.display.update()
             pygame.time.delay(2000)
-            # здесь!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             update_score(score)
             tetris_game_sound.stop()
             start_screen()
