@@ -599,11 +599,11 @@ def generate_level(level):
                     GHOSTS_COLORS.append(cs)
                     ghosts_group.add(Ghosts(cs, x, y))
 
-# +++++++++++++++++ТЕТРИС+++++++++++++++
 
+# ===============================================ТЕТРИС==================================================
 
 # Создаем фигуры
-# ====================================================================
+# ============================
 stick = [['..0..',
           '..0..',
           '..0..',
@@ -614,7 +614,7 @@ stick = [['..0..',
           '.....',
           '.....',
           '.....']]
-# ====================================================================
+# ==========================
 z = [['.....',
       '.....',
       '..00.',
@@ -625,7 +625,7 @@ z = [['.....',
       '..00.',
       '...0.',
       '.....']]
-# ====================================================================
+# ================================
 z_rev = [['.....',
           '.....',
           '.00..',
@@ -636,13 +636,13 @@ z_rev = [['.....',
           '.00..',
           '.0...',
           '.....']]
-# ====================================================================
+# =================================
 cube = [['.....',
          '.....',
          '.00..',
          '.00..',
          '.....']]
-# ====================================================================
+# ======================================
 g = [['.....',
       '.0...',
       '.000.',
@@ -663,7 +663,7 @@ g = [['.....',
       '..0..',
       '.00..',
       '.....']]
-# ====================================================================
+# =====================================
 g_rev = [['.....',
           '...0.',
           '.000.',
@@ -684,7 +684,7 @@ g_rev = [['.....',
           '..0..',
           '..0..',
           '.....']]
-# ====================================================================
+# ================================
 roof = [['.....',
          '..0..',
          '.000.',
@@ -705,21 +705,18 @@ roof = [['.....',
          '.00..',
          '..0..',
          '.....']]
-# ====================================================================
+# =========================
 # Задаем настройки плоскости
-s_width = 800
-s_height = 700
 play_w = 300
 play_h = 600
 block_size = 30
 
-top_left_x = (s_width - play_w) // 2
-top_left_y = s_height - play_h
+top_left_x = (width - play_w) // 2
+top_left_y = height - play_h
 
-# Pflftv wdtnf lkz abueh
 shapes = [z, z_rev, stick, cube, g, g_rev, roof]
-shape_colors = [(0, 255, 15), (255, 45, 60), (35, 255, 255), (255, 255, 67), (255, 165, 43),
-                (15, 20, 255), (128, 87, 128)]
+shape_colors = [(0, 255, 15), (255, 45, 60), (35, 255, 255), (255, 255, 67),
+                (255, 165, 43), (15, 20, 255), (128, 87, 128)]
 
 
 class Piece(object):
@@ -836,20 +833,34 @@ def draw_next_shape(shape, surface):
     surface.blit(label, (sx + 10, sy - 30))
 
 
-def max_score():
-    with open('scores.txt', 'r') as f:
-        lines = f.readlines()
-        score = lines[0].strip()
-    return score
-
-
 def update_score(nscore):
-    score = max_score()
-    with open('scores.txt', 'w') as f:
-        if int(score) > nscore:
-            f.write(str(score))
-        else:
-            f.write(str(nscore))
+    global btp
+    if btp <= nscore:
+        btp = nscore
+        cur.execute(f"UPDATE tetris_top SET best_tetris_points = {btp} WHERE playerid = {pidentification}")
+        con.commit()
+        truetop = cur.execute("SELECT playerid, best_tetris_points FROM tetris_top"
+                              " ORDER BY best_tetris_points DESC").fetchall()
+        cur.execute("DELETE from tetris_top")
+        con.commit()
+        cur.execute("UPDATE sqlite_sequence SET seq = 0 WHERE Name = 'tetris_top'")
+        for i in truetop:
+            cur.execute(f"INSERT INTO tetris_top (playerid, best_tetris_points) VALUES (?, ?)", (i[0], i[1]))
+        con.commit()
+        # обновление ексель файла с тетрис топом
+        update_tetris_top_xl()
+
+
+# обновление ексель файла с тетрис топом
+def update_tetris_top_xl():
+    book = openpyxl.load_workbook('pacman_pics_n_fields/топ тетриса.xlsx')
+    sheet = book.active
+    for i, row in enumerate(cur.execute("SELECT nickname, best_tetris_points FROM tetris_top JOIN information ON"
+                                            " tetris_top.playerid = information.playerid").fetchall()):
+        for j, col in enumerate(row):
+            c = sheet.cell(row=i + 1, column=j + 1)
+            c.value = col
+    book.save('pacman_pics_n_fields/топ тетриса.xlsx')
 
 
 def draw_window(surface, grid, score=0):
@@ -872,9 +883,8 @@ def draw_window(surface, grid, score=0):
     draw_grid(surface, grid)
 
 
-def main_game(win):
+def main(win):
     locked_positions = {}
-    grid = create_grid(locked_positions)
     change_piece = False
     run = True
     current_piece = get_shape()
@@ -906,8 +916,9 @@ def main_game(win):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                tetris_game_sound.stop()
+                start_screen()
                 run = False
-                pygame.display.quit()
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
@@ -956,29 +967,12 @@ def main_game(win):
         if check_lost(locked_positions):
             draw_text_middle(win, "Ты проиграл!", 80, (255, 255, 255))
             pygame.display.update()
-            pygame.time.delay(1500)
-            run = False
+            pygame.time.delay(2000)
+            # здесь!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             update_score(score)
-
-
-def main_menu(win):
-    run = True
-    while run:
-        win.fill((128, 128, 128))
-        draw_text_middle(win, 'Нажми любую кнопку для запуска игры', 35, (255, 255, 255))
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-            if event.type == pygame.KEYDOWN:
-                main_game(win)
-
-    pygame.display.quit()
-
-
-win = pygame.display.set_mode((s_width, s_height))
-pygame.display.set_caption('Tetris')
-main_menu(win)
+            tetris_game_sound.stop()
+            start_screen()
+            run = False
 
 
 #создание базы данных
